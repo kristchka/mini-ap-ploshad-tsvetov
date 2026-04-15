@@ -8,6 +8,24 @@ import {
 } from "../lib/storage";
 import { APP_CONFIG } from "../config";
 
+function getInitialQrCode(): PavilionCode {
+  if (typeof window === "undefined") return "p1" as PavilionCode;
+
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get("p");
+
+  const allowed = Array.from(
+    { length: APP_CONFIG.TOTAL_PAVILIONS },
+    (_, i) => `p${i + 1}`
+  );
+
+  if (code && allowed.includes(code)) {
+    return code as PavilionCode;
+  }
+
+  return "p1" as PavilionCode;
+}
+
 export function useTimer(initialSeconds: number) {
   const [seconds, setSeconds] = useState(initialSeconds);
 
@@ -75,7 +93,7 @@ export function useOTP(length = APP_CONFIG.OTP_LENGTH) {
   return { digits, setDigit, clear, code, isComplete };
 }
 
-export function useApp(initialQrCode: PavilionCode = "p1" as PavilionCode) {
+export function useApp(initialQrCode: PavilionCode = getInitialQrCode()) {
   const [page, setPage] = useState<PageName>("loading");
   const [prevPage, setPrevPage] = useState<PageName>("welcome");
   const [phone, setPhone] = useState("");
@@ -86,6 +104,14 @@ export function useApp(initialQrCode: PavilionCode = "p1" as PavilionCode) {
   const [loginError, setLoginError] = useState("");
   const [verifyError, setVerifyError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const url = new URL(window.location.href);
+    url.searchParams.set("p", qrCode);
+    window.history.replaceState({}, "", url.toString());
+  }, [qrCode]);
 
   const navigate = useCallback(
     (next: PageName) => {

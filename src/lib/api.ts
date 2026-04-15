@@ -9,7 +9,7 @@ import type {
   CheckInResponse,
   PavilionCode,
 } from "../types";
-import { APP_CONFIG } from "../config";
+import { APP_CONFIG, PAVILIONS } from "../config";
 import {
   getStoredProgress,
   setStoredProgress,
@@ -83,6 +83,11 @@ const MockApi = {
 
   async checkIn(req: CheckInRequest): Promise<CheckInResponse> {
     await pause(600);
+    const isValidPavilion = PAVILIONS.some((p) => p.code === req.pavilionCode);
+
+if (!isValidPavilion) {
+  return { status: "invalid_qr", visited: getStoredProgress() };
+}
     const visited = getStoredProgress();
 
     if (visited.includes(req.pavilionCode)) {
