@@ -2,11 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import type { PavilionCode, CheckInStatus, PageName } from "../types";
 import { api } from "../lib/api";
 import { submitCheckIn } from "../lib/checkin";
-import {
-  getStoredUser,
-  clearStoredUser,
-  getStoredProgress,
-} from "../lib/storage";
+import { getStoredUser, clearStoredUser } from "../lib/storage";
 import { APP_CONFIG } from "../config";
 
 function getInitialQrCode(): PavilionCode {
@@ -41,6 +37,21 @@ function normalizePhoneForBackend(value: string): string {
   }
 
   return `+${digits}`;
+}
+
+function mapRemoteStatus(
+  remoteStatus: "checked_in" | "already_checked",
+  progress: number
+): CheckInStatus {
+  if (progress >= APP_CONFIG.TOTAL_PAVILIONS) {
+    return "completed";
+  }
+
+  if (remoteStatus === "already_checked") {
+    return "already_counted";
+  }
+
+  return "success";
 }
 
 export function useTimer(initialSeconds: number) {
@@ -137,43 +148,39 @@ export function useApp(initialQrCode: PavilionCode = getInitialQrCode()) {
     [page]
   );
 
-  const doCheckIn = useCallback(
-    async (code: PavilionCode, phoneForCheckIn: string) => {
-      const activePhone = normalizePhoneForBackend(phoneForCheckIn);
+  const doCheckIn = useCallback(async (code: PavilionCode, phoneForCheckIn: string) => {
+    const activePhone = normalizePhoneForBackend(phoneForCheckIn);
 
-      if (!activePhone) {
-        setErrorMessage("Не удалось определить номер телефона участника.");
+    if (!activePhone) {
+      setErrorMessage("Не удалось определить номер телефона участника.");
+      setPage("error");
+      return;
+    }
+
+    setPage("loading");
+
+    try {
+      const remoteRes = await submitCheckIn(activePhone, code);
+      console.log("REMOTE_CHECK_IN:", remoteRes);
+
+      if (!remoteRes.ok) {
+        setErrorMessage(remoteRes.message || "Не удалось засчитать павильон.");
         setPage("error");
         return;
       }
 
-      setPage("loading");
+      const visited = (remoteRes.visited ?? []) as PavilionCode[];
+      const progress = remoteRes.progress ?? visited.length;
 
-      try {
-        const remoteRes = await submitCheckIn(activePhone, code);
-        console.log("REMOTE_CHECK_IN:", remoteRes);
-
-        if (!remoteRes.ok) {
-          setErrorMessage(remoteRes.message || "Не удалось засчитать павильон.");
-          setPage("error");
-          return;
-        }
-
-        // Пока оставляем локальную механику для UI,
-        // чтобы не ломать текущие экраны.
-        const localRes = await api.checkIn({ pavilionCode: code });
-
-        setPavilions(localRes.visited);
-        setResultStatus(localRes.status);
-        setPage("result");
-      } catch (error) {
-        console.error("CHECK_IN_FLOW_ERROR:", error);
-        setErrorMessage("Не удалось засчитать павильон. Попробуйте ещё раз.");
-        setPage("error");
-      }
-    },
-    []
-  );
+      setPavilions(visited);
+      setResultStatus(mapRemoteStatus(remoteRes.status, progress));
+      setPage("result");
+    } catch (error) {
+      console.error("CHECK_IN_FLOW_ERROR:", error);
+      setErrorMessage("Не удалось засчитать павильон. Попробуйте ещё раз.");
+      setPage("error");
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -183,12 +190,7 @@ export function useApp(initialQrCode: PavilionCode = getInitialQrCode()) {
 
       if (user) {
         if (cancelled) return;
-
         setPhone(user.phone);
-
-        const progress = getStoredProgress();
-        setPavilions(progress);
-
         await doCheckIn(qrCode, user.phone);
       } else {
         if (!cancelled) {
@@ -206,8 +208,6 @@ export function useApp(initialQrCode: PavilionCode = getInitialQrCode()) {
     const user = getStoredUser();
 
     if (user) {
-      const progress = getStoredProgress();
-      setPavilions(progress);
       await doCheckIn(qrCode, user.phone);
     } else {
       setPage("login");

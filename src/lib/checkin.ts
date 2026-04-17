@@ -1,6 +1,5 @@
+import type { PavilionCode } from "../types";
 import { supabase } from "./supabase";
-import { APP_CONFIG } from "../config";
-import type { CheckInResponse, PavilionCode } from "../types";
 
 export interface CheckInResult {
   ok: boolean;
@@ -10,6 +9,7 @@ export interface CheckInResult {
   pavilion_id?: string;
   pavilion_name?: string;
   progress?: number;
+  visited?: PavilionCode[];
 }
 
 export async function submitCheckIn(
@@ -26,34 +26,4 @@ export async function submitCheckIn(
   }
 
   return data as CheckInResult;
-}
-
-export function mapCheckInResultToUi(
-  result: CheckInResult,
-  code: PavilionCode,
-  currentVisited: PavilionCode[]
-): CheckInResponse {
-  if (result.status === "invalid_pavilion") {
-    return { status: "invalid_qr", visited: currentVisited };
-  }
-
-  if (result.status === "already_checked") {
-    return {
-      status:
-        currentVisited.length >= APP_CONFIG.TOTAL_PAVILIONS
-          ? "completed"
-          : "already_counted",
-      visited: currentVisited,
-    };
-  }
-
-  const visited = currentVisited.includes(code)
-    ? currentVisited
-    : [...currentVisited, code];
-
-  return {
-    status:
-      visited.length >= APP_CONFIG.TOTAL_PAVILIONS ? "completed" : "success",
-    visited,
-  };
 }
