@@ -1,12 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import type { PavilionCode, CheckInStatus, PageName } from "../types";
 import { api } from "../lib/api";
-import { mapCheckInResultToUi, submitCheckIn } from "../lib/checkin";
+import { submitCheckIn } from "../lib/checkin";
 import {
   getStoredUser,
   clearStoredUser,
   getStoredProgress,
-  setStoredProgress,
 } from "../lib/storage";
 import { APP_CONFIG } from "../config";
 
@@ -139,8 +138,8 @@ export function useApp(initialQrCode: PavilionCode = getInitialQrCode()) {
   );
 
   const doCheckIn = useCallback(
-    async (code: PavilionCode, phoneForCheckIn?: string) => {
-      const activePhone = normalizePhoneForBackend(phoneForCheckIn ?? phone);
+    async (code: PavilionCode, phoneForCheckIn: string) => {
+      const activePhone = normalizePhoneForBackend(phoneForCheckIn);
 
       if (!activePhone) {
         setErrorMessage("Не удалось определить номер телефона участника.");
@@ -160,14 +159,12 @@ export function useApp(initialQrCode: PavilionCode = getInitialQrCode()) {
           return;
         }
 
-        // Пока оставляем локальную механику для UI и прогресса,
-        // чтобы ничего не сломать в текущих экранах.
-        const currentVisited = getStoredProgress();
-        const uiRes = mapCheckInResultToUi(remoteRes, code, currentVisited);
+        // Пока оставляем локальную механику для UI,
+        // чтобы не ломать текущие экраны.
+        const localRes = await api.checkIn({ pavilionCode: code });
 
-        setStoredProgress(uiRes.visited);
-        setPavilions(uiRes.visited);
-        setResultStatus(uiRes.status);
+        setPavilions(localRes.visited);
+        setResultStatus(localRes.status);
         setPage("result");
       } catch (error) {
         console.error("CHECK_IN_FLOW_ERROR:", error);
@@ -175,14 +172,18 @@ export function useApp(initialQrCode: PavilionCode = getInitialQrCode()) {
         setPage("error");
       }
     },
-    [phone]
+    []
   );
 
   useEffect(() => {
+    let cancelled = false;
+
     (async () => {
       const user = getStoredUser();
 
       if (user) {
+        if (cancelled) return;
+
         setPhone(user.phone);
 
         const progress = getStoredProgress();
@@ -190,10 +191,16 @@ export function useApp(initialQrCode: PavilionCode = getInitialQrCode()) {
 
         await doCheckIn(qrCode, user.phone);
       } else {
-        setPage("welcome");
+        if (!cancelled) {
+          setPage("welcome");
+        }
       }
     })();
-  }, [doCheckIn, qrCode]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [qrCode, doCheckIn]);
 
   const handleStart = useCallback(async () => {
     const user = getStoredUser();
