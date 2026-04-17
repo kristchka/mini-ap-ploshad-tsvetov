@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useApp } from "./hooks";
 import { PAVILIONS, APP_CONFIG } from "./config";
 import type { PavilionCode } from "./types";
+import { supabase } from "./lib/supabase";
+import { submitCheckIn } from "./lib/checkin";
 import {
   LoadingScreen,
   WelcomeScreen,
@@ -40,8 +42,7 @@ function RulesContent(): React.ReactElement {
       <p>
         Среди всех участников, собравших {APP_CONFIG.TOTAL_PAVILIONS} из{" "}
         {APP_CONFIG.TOTAL_PAVILIONS} павильонов, будет разыграна{" "}
-        {APP_CONFIG.PRIZE_NAME}. Розыгрыш состоится в{" "}
-        {APP_CONFIG.RAFFLE_DATE}.
+        {APP_CONFIG.PRIZE_NAME}. Розыгрыш состоится в {APP_CONFIG.RAFFLE_DATE}.
       </p>
 
       <h3>5. Контакты</h3>
@@ -111,7 +112,8 @@ function DemoBar({ qrCode, onChange }: DemoBarProps): React.ReactElement | null 
   );
 }
 
-export default function App(): React.ReactElement {  const {
+export default function App(): React.ReactElement {
+  const {
     page,
     prevPage,
     phone,
@@ -130,6 +132,35 @@ export default function App(): React.ReactElement {  const {
     handleLogout,
     handleResend,
   } = useApp();
+
+  useEffect(() => {
+    const loadPavilions = async () => {
+      const { data, error } = await supabase
+        .from("pavilions")
+        .select("id, code, name")
+        .order("code");
+
+      console.log("PAVILIONS:", data);
+      console.log("SUPABASE_ERROR:", error);
+    };
+
+    void loadPavilions();
+  }, []);
+
+  const handleDebugCheckIn = async () => {
+    try {
+      const result = await submitCheckIn("79990000001", qrCode);
+
+      console.log("CHECK_IN_RESULT:", result);
+
+      alert(
+        `Статус: ${result.status}\nСообщение: ${result.message}\nПрогресс: ${result.progress ?? 0}`
+      );
+    } catch (error) {
+      console.error("CHECK_IN_ERROR:", error);
+      alert("Ошибка при check-in. Открой Console.");
+    }
+  };
 
   const showDemo = page === "welcome" || page === "cabinet";
 
@@ -201,6 +232,29 @@ export default function App(): React.ReactElement {  const {
       )}
 
       {showDemo && <DemoBar qrCode={qrCode} onChange={setQrCode} />}
+
+      {!import.meta.env.PROD && false && (
+        <button
+          type="button"
+          onClick={handleDebugCheckIn}
+          style={{
+            position: "fixed",
+            right: 16,
+            bottom: 16,
+            zIndex: 9999,
+            padding: "12px 16px",
+            borderRadius: 12,
+            border: "none",
+            background: "#2f6b3b",
+            color: "#fff",
+            fontWeight: 600,
+            cursor: "pointer",
+            boxShadow: "0 8px 20px rgba(0,0,0,0.15)",
+          }}
+        >
+          Тестовый check-in
+        </button>
+      )}
     </div>
   );
 }

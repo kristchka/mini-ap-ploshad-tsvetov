@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import type { PavilionCode, CheckInStatus, PageName } from "../types";
 import { api } from "../lib/api";
+import { mapCheckInResultToUi, submitCheckIn } from "../lib/checkin";
 import {
   getStoredUser,
   clearStoredUser,
   getStoredProgress,
+  setStoredProgress,
 } from "../lib/storage";
 import { APP_CONFIG } from "../config";
 
@@ -24,6 +26,22 @@ function getInitialQrCode(): PavilionCode {
   }
 
   return "p1" as PavilionCode;
+}
+
+function normalizePhoneForBackend(value: string): string {
+  const digits = value.replace(/\D/g, "");
+
+  if (!digits) return "";
+
+  if (digits.length === 11 && (digits.startsWith("7") || digits.startsWith("8"))) {
+    return `+7${digits.slice(1)}`;
+  }
+
+  if (digits.length === 10) {
+    return `+7${digits}`;
+  }
+
+  return `+${digits}`;
 }
 
 export function useTimer(initialSeconds: number) {
@@ -46,6 +64,7 @@ export function usePhoneFormatter(initial = "") {
   const format = useCallback((raw: string): string => {
     const digits = raw.replace(/\D/g, "");
     if (!digits) return "";
+
     const normalized =
       digits[0] === "7" || digits[0] === "8"
         ? digits.slice(1, 11)
@@ -73,17 +92,15 @@ export function usePhoneFormatter(initial = "") {
 export function useOTP(length = APP_CONFIG.OTP_LENGTH) {
   const [digits, setDigits] = useState<string[]>(Array(length).fill(""));
 
-  const setDigit = useCallback(
-    (index: number, value: string) => {
-      if (!/^\d*$/.test(value)) return;
-      setDigits((prev) => {
-        const next = [...prev];
-        next[index] = value.slice(-1);
-        return next;
-      });
-    },
-    []
-  );
+  const setDigit = useCallback((index: number, value: string) => {
+    if (!/^\d*$/.test(value)) return;
+
+    setDigits((prev) => {
+      const next = [...prev];
+      next[index] = value.slice(-1);
+      return next;
+    });
+  }, []);
 
   const clear = useCallback(() => setDigits(Array(length).fill("")), [length]);
 
@@ -122,29 +139,56 @@ export function useApp(initialQrCode: PavilionCode = getInitialQrCode()) {
   );
 
   const doCheckIn = useCallback(
-    async (code: PavilionCode) => {
+    async (code: PavilionCode, phoneForCheckIn?: string) => {
+      const activePhone = normalizePhoneForBackend(phoneForCheckIn ?? phone);
+
+      if (!activePhone) {
+        setErrorMessage("Не удалось определить номер телефона участника.");
+        setPage("error");
+        return;
+      }
+
       setPage("loading");
+
       try {
-        const res = await api.checkIn({ pavilionCode: code });
-        setPavilions(res.visited);
-        setResultStatus(res.status);
+        const remoteRes = await submitCheckIn(activePhone, code);
+        console.log("REMOTE_CHECK_IN:", remoteRes);
+
+        if (!remoteRes.ok) {
+          setErrorMessage(remoteRes.message || "Не удалось засчитать павильон.");
+          setPage("error");
+          return;
+        }
+
+        // Пока оставляем локальную механику для UI и прогресса,
+        // чтобы ничего не сломать в текущих экранах.
+        const currentVisited = getStoredProgress();
+        const uiRes = mapCheckInResultToUi(remoteRes, code, currentVisited);
+
+        setStoredProgress(uiRes.visited);
+        setPavilions(uiRes.visited);
+        setResultStatus(uiRes.status);
         setPage("result");
-      } catch {
+      } catch (error) {
+        console.error("CHECK_IN_FLOW_ERROR:", error);
         setErrorMessage("Не удалось засчитать павильон. Попробуйте ещё раз.");
         setPage("error");
       }
     },
-    []
+    [phone]
   );
 
   useEffect(() => {
     (async () => {
       const user = getStoredUser();
+
       if (user) {
         setPhone(user.phone);
+
         const progress = getStoredProgress();
         setPavilions(progress);
-        await doCheckIn(qrCode);
+
+        await doCheckIn(qrCode, user.phone);
       } else {
         setPage("welcome");
       }
@@ -153,10 +197,11 @@ export function useApp(initialQrCode: PavilionCode = getInitialQrCode()) {
 
   const handleStart = useCallback(async () => {
     const user = getStoredUser();
+
     if (user) {
       const progress = getStoredProgress();
       setPavilions(progress);
-      await doCheckIn(qrCode);
+      await doCheckIn(qrCode, user.phone);
     } else {
       setPage("login");
     }
@@ -165,6 +210,7 @@ export function useApp(initialQrCode: PavilionCode = getInitialQrCode()) {
   const handleSendCode = useCallback(async (rawPhone: string) => {
     setIsLoading(true);
     setLoginError("");
+
     try {
       await api.sendCode({ phone: rawPhone });
       setPhone(rawPhone);
@@ -180,10 +226,12 @@ export function useApp(initialQrCode: PavilionCode = getInitialQrCode()) {
     async (code: string) => {
       setIsLoading(true);
       setVerifyError("");
+
       try {
         const res = await api.verifyCode({ phone, code });
+
         if (res.ok) {
-          await doCheckIn(qrCode);
+          await doCheckIn(qrCode, phone);
         } else {
           setVerifyError("Неверный код. Попробуйте ещё раз.");
         }

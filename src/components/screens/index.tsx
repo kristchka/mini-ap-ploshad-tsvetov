@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React from "react";
 import type { CheckInStatus, PavilionCode } from "../../types";
 import { APP_CONFIG, TEXTS } from "../../config";
 import {
@@ -180,7 +180,7 @@ export function VerifyScreen({
 }: VerifyScreenProps): React.ReactElement {
   const { digits, setDigit, code, isComplete } = useOTP(APP_CONFIG.OTP_LENGTH);
   const { seconds, isExpired, reset } = useTimer(APP_CONFIG.RESEND_TIMEOUT_SEC);
-  const refs = Array.from({ length: APP_CONFIG.OTP_LENGTH }, () => useRef<HTMLInputElement>(null));
+  const refsArray = React.useRef<(HTMLInputElement | null)[]>([]).current;
 
   const masked =
     phone.length >= 11
@@ -191,7 +191,7 @@ export function VerifyScreen({
     setDigit(i, value);
 
     if (value && i < APP_CONFIG.OTP_LENGTH - 1) {
-      refs[i + 1].current?.focus();
+      refsArray[i + 1]?.focus();
     }
 
     const updated = [...digits];
@@ -205,7 +205,7 @@ export function VerifyScreen({
 
   const handleKeyDown = (i: number, e: React.KeyboardEvent) => {
     if (e.key === "Backspace" && !digits[i] && i > 0) {
-      refs[i - 1].current?.focus();
+      refsArray[i - 1]?.focus();
     }
   };
 
@@ -243,7 +243,7 @@ export function VerifyScreen({
           {digits.map((d, i) => (
             <input
               key={i}
-              ref={refs[i]}
+              ref={(el) => { refsArray[i] = el; }}
               className={`otp${error ? " err" : ""}`}
               type="tel"
               inputMode="numeric"
