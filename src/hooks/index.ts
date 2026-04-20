@@ -1,26 +1,47 @@
 import { useState, useEffect, useCallback } from "react";
 import type { PavilionCode, CheckInStatus, PageName } from "../types";
 import { api } from "../lib/api";
-import { submitCheckIn } from "../lib/checkin";
+import { submitCheckInByToken, getProgressByPhone } from "../lib/checkin";
 import { getStoredUser, clearStoredUser } from "../lib/storage";
 import { APP_CONFIG } from "../config";
 
-function getInitialQrCode(): PavilionCode {
-  if (typeof window === "undefined") return "p1" as PavilionCode;
+const DEMO_QR_TOKENS: Record<PavilionCode, string> = {
+  p1: "flower-pav-01-x8d2",
+  p2: "flower-pav-02-k4m1",
+  p3: "flower-pav-03-u7n9",
+  p4: "flower-pav-04-w2r6",
+  p5: "flower-pav-05-z8q3",
+  p6: "flower-pav-06-t1b7",
+  p7: "flower-pav-07-p6x4",
+  p8: "flower-pav-08-l9c2",
+  p9: "flower-pav-09-v5h8",
+  p10: "flower-pav-10-j3s6",
+};
+
+// Если в Supabase у тебя другие qr_token, просто замени значения выше на свои.
+
+function hasQrTokenInUrl(): boolean {
+  if (typeof window === "undefined") return false;
 
   const params = new URLSearchParams(window.location.search);
-  const code = params.get("p");
+  return params.has("qr");
+}
 
-  const allowed = Array.from(
-    { length: APP_CONFIG.TOTAL_PAVILIONS },
-    (_, i) => `p${i + 1}`
+function getInitialQrToken(): string {
+  if (typeof window === "undefined") return "";
+
+  const params = new URLSearchParams(window.location.search);
+  return params.get("qr") ?? "";
+}
+
+function getInitialDemoQrCode(): PavilionCode {
+  const token = getInitialQrToken();
+
+  const found = Object.entries(DEMO_QR_TOKENS).find(
+    ([, value]) => value === token
   );
 
-  if (code && allowed.includes(code)) {
-    return code as PavilionCode;
-  }
-
-  return "p1" as PavilionCode;
+  return (found?.[0] as PavilionCode) ?? ("p1" as PavilionCode);
 }
 
 function normalizePhoneForBackend(value: string): string {
@@ -28,7 +49,10 @@ function normalizePhoneForBackend(value: string): string {
 
   if (!digits) return "";
 
-  if (digits.length === 11 && (digits.startsWith("7") || digits.startsWith("8"))) {
+  if (
+    digits.length === 11 &&
+    (digits.startsWith("7") || digits.startsWith("8"))
+  ) {
     return `+7${digits.slice(1)}`;
   }
 
@@ -40,7 +64,11 @@ function normalizePhoneForBackend(value: string): string {
 }
 
 function mapRemoteStatus(
-  remoteStatus: "checked_in" | "already_checked",
+  remoteStatus:
+    | "checked_in"
+    | "already_checked"
+    | "invalid_phone"
+    | "invalid_pavilion",
   progress: number
 ): CheckInStatus {
   if (progress >= APP_CONFIG.TOTAL_PAVILIONS) {
@@ -120,11 +148,13 @@ export function useOTP(length = APP_CONFIG.OTP_LENGTH) {
   return { digits, setDigit, clear, code, isComplete };
 }
 
-export function useApp(initialQrCode: PavilionCode = getInitialQrCode()) {
+export function useApp() {
   const [page, setPage] = useState<PageName>("loading");
   const [prevPage, setPrevPage] = useState<PageName>("welcome");
   const [phone, setPhone] = useState("");
-  const [qrCode, setQrCode] = useState<PavilionCode>(initialQrCode);
+  const [qrToken, setQrToken] = useState<string>(getInitialQrToken());
+  const [hasQrToken, setHasQrToken] = useState<boolean>(hasQrTokenInUrl());
+  const [demoQrCode, setDemoQrCode] = useState<PavilionCode>(getInitialDemoQrCode());
   const [pavilions, setPavilions] = useState<PavilionCode[]>([]);
   const [resultStatus, setResultStatus] = useState<CheckInStatus | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
@@ -132,13 +162,30 @@ export function useApp(initialQrCode: PavilionCode = getInitialQrCode()) {
   const [verifyError, setVerifyError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  const setQrCode = useCallback((code: PavilionCode) => {
+    setDemoQrCode(code);
+    setQrToken(DEMO_QR_TOKENS[code]);
+    setHasQrToken(true);
+  }, []);
+
+  const clearQrToken = useCallback(() => {
+    setQrToken("");
+    setHasQrToken(false);
+  }, []);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const url = new URL(window.location.href);
-    url.searchParams.set("p", qrCode);
+
+    if (hasQrToken && qrToken) {
+      url.searchParams.set("qr", qrToken);
+    } else {
+      url.searchParams.delete("qr");
+    }
+
     window.history.replaceState({}, "", url.toString());
-  }, [qrCode]);
+  }, [qrToken, hasQrToken]);
 
   const navigate = useCallback(
     (next: PageName) => {
@@ -148,8 +195,8 @@ export function useApp(initialQrCode: PavilionCode = getInitialQrCode()) {
     [page]
   );
 
-  const doCheckIn = useCallback(async (code: PavilionCode, phoneForCheckIn: string) => {
-    const activePhone = normalizePhoneForBackend(phoneForCheckIn);
+  const loadProgress = useCallback(async (phoneForLoad: string) => {
+    const activePhone = normalizePhoneForBackend(phoneForLoad);
 
     if (!activePhone) {
       setErrorMessage("Не удалось определить номер телефона участника.");
@@ -160,27 +207,68 @@ export function useApp(initialQrCode: PavilionCode = getInitialQrCode()) {
     setPage("loading");
 
     try {
-      const remoteRes = await submitCheckIn(activePhone, code);
-      console.log("REMOTE_CHECK_IN:", remoteRes);
+      const remoteRes = await getProgressByPhone(activePhone);
 
       if (!remoteRes.ok) {
-        setErrorMessage(remoteRes.message || "Не удалось засчитать павильон.");
+        setErrorMessage(remoteRes.message || "Не удалось загрузить прогресс.");
         setPage("error");
         return;
       }
 
       const visited = (remoteRes.visited ?? []) as PavilionCode[];
-      const progress = remoteRes.progress ?? visited.length;
-
       setPavilions(visited);
-      setResultStatus(mapRemoteStatus(remoteRes.status, progress));
-      setPage("result");
+      setResultStatus(
+        visited.length >= APP_CONFIG.TOTAL_PAVILIONS ? "completed" : null
+      );
+      setPage("cabinet");
     } catch (error) {
-      console.error("CHECK_IN_FLOW_ERROR:", error);
-      setErrorMessage("Не удалось засчитать павильон. Попробуйте ещё раз.");
+      console.error("LOAD_PROGRESS_ERROR:", error);
+      setErrorMessage("Не удалось загрузить прогресс. Попробуйте ещё раз.");
       setPage("error");
     }
   }, []);
+
+  const doCheckInByToken = useCallback(
+    async (token: string, phoneForCheckIn: string) => {
+      const activePhone = normalizePhoneForBackend(phoneForCheckIn);
+
+      if (!activePhone) {
+        setErrorMessage("Не удалось определить номер телефона участника.");
+        setPage("error");
+        return;
+      }
+
+      if (!token) {
+        setErrorMessage("QR-токен не найден.");
+        setPage("error");
+        return;
+      }
+
+      setPage("loading");
+
+      try {
+        const remoteRes = await submitCheckInByToken(activePhone, token);
+
+        if (!remoteRes.ok) {
+          setErrorMessage(remoteRes.message || "Не удалось засчитать павильон.");
+          setPage("error");
+          return;
+        }
+
+        const visited = (remoteRes.visited ?? []) as PavilionCode[];
+        const progress = remoteRes.progress ?? visited.length;
+
+        setPavilions(visited);
+        setResultStatus(mapRemoteStatus(remoteRes.status, progress));
+        setPage("result");
+      } catch (error) {
+        console.error("CHECK_IN_BY_TOKEN_ERROR:", error);
+        setErrorMessage("Не удалось засчитать павильон. Попробуйте ещё раз.");
+        setPage("error");
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -188,31 +276,39 @@ export function useApp(initialQrCode: PavilionCode = getInitialQrCode()) {
     (async () => {
       const user = getStoredUser();
 
-      if (user) {
-        if (cancelled) return;
-        setPhone(user.phone);
-        await doCheckIn(qrCode, user.phone);
+      if (!user) {
+        if (!cancelled) setPage("welcome");
+        return;
+      }
+
+      if (cancelled) return;
+      setPhone(user.phone);
+
+      if (hasQrToken && qrToken) {
+        await doCheckInByToken(qrToken, user.phone);
       } else {
-        if (!cancelled) {
-          setPage("welcome");
-        }
+        await loadProgress(user.phone);
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [qrCode, doCheckIn]);
+  }, [qrToken, hasQrToken, doCheckInByToken, loadProgress]);
 
   const handleStart = useCallback(async () => {
     const user = getStoredUser();
 
     if (user) {
-      await doCheckIn(qrCode, user.phone);
+      if (hasQrToken && qrToken) {
+        await doCheckInByToken(qrToken, user.phone);
+      } else {
+        await loadProgress(user.phone);
+      }
     } else {
       setPage("login");
     }
-  }, [qrCode, doCheckIn]);
+  }, [qrToken, hasQrToken, doCheckInByToken, loadProgress]);
 
   const handleSendCode = useCallback(async (rawPhone: string) => {
     setIsLoading(true);
@@ -237,10 +333,15 @@ export function useApp(initialQrCode: PavilionCode = getInitialQrCode()) {
       try {
         const res = await api.verifyCode({ phone, code });
 
-        if (res.ok) {
-          await doCheckIn(qrCode, phone);
-        } else {
+        if (!res.ok) {
           setVerifyError("Неверный код. Попробуйте ещё раз.");
+          return;
+        }
+
+        if (hasQrToken && qrToken) {
+          await doCheckInByToken(qrToken, phone);
+        } else {
+          await loadProgress(phone);
         }
       } catch {
         setVerifyError("Ошибка сети. Попробуйте ещё раз.");
@@ -248,7 +349,7 @@ export function useApp(initialQrCode: PavilionCode = getInitialQrCode()) {
         setIsLoading(false);
       }
     },
-    [phone, qrCode, doCheckIn]
+    [phone, qrToken, hasQrToken, doCheckInByToken, loadProgress]
   );
 
   const handleLogout = useCallback(() => {
@@ -256,8 +357,9 @@ export function useApp(initialQrCode: PavilionCode = getInitialQrCode()) {
     setPavilions([]);
     setPhone("");
     setResultStatus(null);
+    clearQrToken();
     setPage("welcome");
-  }, []);
+  }, [clearQrToken]);
 
   const handleResend = useCallback(async () => {
     try {
@@ -271,7 +373,9 @@ export function useApp(initialQrCode: PavilionCode = getInitialQrCode()) {
     page,
     prevPage,
     phone,
-    qrCode,
+    qrCode: demoQrCode,
+    qrToken,
+    hasQrToken,
     pavilions,
     resultStatus,
     errorMessage,
@@ -279,6 +383,8 @@ export function useApp(initialQrCode: PavilionCode = getInitialQrCode()) {
     verifyError,
     isLoading,
     navigate,
+    setQrToken: setQrCode,
+    setQrTokenFromScan: setQrCode,
     setQrCode,
     handleStart,
     handleSendCode,

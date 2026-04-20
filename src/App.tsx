@@ -3,7 +3,7 @@ import { useApp } from "./hooks";
 import { PAVILIONS, APP_CONFIG } from "./config";
 import type { PavilionCode } from "./types";
 import { supabase } from "./lib/supabase";
-import { submitCheckIn } from "./lib/checkin";
+import { submitCheckInByToken } from "./lib/checkin";
 import {
   LoadingScreen,
   WelcomeScreen,
@@ -125,7 +125,7 @@ export default function App(): React.ReactElement {
     verifyError,
     isLoading,
     navigate,
-    setQrCode,
+    setQrTokenFromScan,
     handleStart,
     handleSendCode,
     handleVerify,
@@ -149,7 +149,7 @@ export default function App(): React.ReactElement {
 
   const handleDebugCheckIn = async () => {
     try {
-      const result = await submitCheckIn("79990000001", qrCode);
+      const result = await submitCheckInByToken("79990000001", qrCode);
 
       console.log("CHECK_IN_RESULT:", result);
 
@@ -231,7 +231,7 @@ export default function App(): React.ReactElement {
         <ErrorScreen message={errorMessage} onHome={() => navigate("welcome")} />
       )}
 
-      {showDemo && <DemoBar qrCode={qrCode} onChange={setQrCode} />}
+      {showDemo && <DemoBar qrCode={qrCode} onChange={setQrTokenFromScan} />}
 
       {!import.meta.env.PROD && false && (
         <button
