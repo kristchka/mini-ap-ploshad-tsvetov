@@ -51,38 +51,12 @@ export function WelcomeScreen({
           paddingTop: 20,
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 14,
-            marginBottom: 22,
-            flexWrap: "wrap",
-          }}
-        >
-          <div
-            style={{
-              width: 54,
-              height: 54,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-            }}
-          >
+        <div className="hero-brand">
+          <div className="hero-logo">
             <Logo />
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              fontSize: 50,
-              lineHeight: 1,
-            }}
-          >
+          <div className="hero-flowers">
             <span>🌺</span>
             <span>🌸</span>
             <span>🌼</span>
@@ -95,8 +69,9 @@ export function WelcomeScreen({
           {welcome.title.split(" ").slice(2).join(" ")}
         </div>
 
-        <p className="sub" style={{ fontSize: 15, marginTop: 12 }}>
-          {welcome.subtitle}
+        <p className="hero-sub">
+          Сканируй QR-коды в разных павильонах и участвуй в розыгрыше{" "}
+          <span>{APP_CONFIG.PRIZE_NAME}</span>
         </p>
 
         <div className="steps">
