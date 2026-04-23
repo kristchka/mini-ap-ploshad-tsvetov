@@ -38,24 +38,24 @@ export function WelcomeScreen({
   const { welcome } = TEXTS;
 
   return (
-    <div className="screen fade welcome-screen">
+    <div className="screen fade hero-screen">
       <div className="bg-orb orb1" />
       <div className="bg-orb orb2" />
 
-      <div className="welcome-main">
-        <div className="hero-brand">
+      <div className="hero-content">
+        <div className="hero-brand-row">
           <div className="hero-logo">
-            <Logo height={64} />
+            <Logo />
           </div>
 
-          <div className="hero-flowers">
+          <div className="hero-flowers" aria-hidden="true">
             <span>🌺</span>
             <span>🌸</span>
             <span>🌼</span>
           </div>
         </div>
 
-        <div className="display" style={{ textAlign: "center" }}>
+        <div className="display">
           {welcome.title.split(" ").slice(0, 2).join(" ")}
           <br />
           {welcome.title.split(" ").slice(2).join(" ")}
@@ -76,7 +76,7 @@ export function WelcomeScreen({
         </div>
       </div>
 
-      <div>
+      <div className="hero-actions">
         <Button onClick={onStart}>{welcome.cta}</Button>
         <FooterLinks onRules={onRules} onPrivacy={onPrivacy} />
       </div>
