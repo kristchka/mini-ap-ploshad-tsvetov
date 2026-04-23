@@ -354,6 +354,18 @@ body {
   transform: none;
 }
 
+.hero-screen .btn-outline {
+  background: rgba(255, 253, 250, 0.88);
+  border: 1px solid var(--line);
+  color: var(--green);
+  box-shadow: 0 10px 24px rgba(46, 42, 39, 0.06);
+}
+
+.hero-screen .btn-outline:hover {
+  background: var(--green-soft);
+  box-shadow: 0 12px 28px rgba(46, 42, 39, 0.08);
+}
+
 .lbl {
   display: block;
   font-size: 13px;

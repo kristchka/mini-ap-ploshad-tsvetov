@@ -8,6 +8,7 @@ import {
   FooterLinks,
   Badge,
 } from "../ui";
+import { QrScannerModal } from "../ui/QrScannerModal";
 import { PavilionGrid, PavilionList } from "../PavilionGrid";
 import { usePhoneFormatter, useOTP, useTimer } from "../../hooks";
 
@@ -36,6 +37,7 @@ export function WelcomeScreen({
   onPrivacy,
 }: WelcomeScreenProps): React.ReactElement {
   const { welcome } = TEXTS;
+  const [isScannerOpen, setIsScannerOpen] = React.useState(false);
 
   return (
     <div className="screen fade hero-screen">
@@ -78,8 +80,16 @@ export function WelcomeScreen({
 
       <div className="hero-actions">
         <Button onClick={onStart}>{welcome.cta}</Button>
+        <Button variant="outline" onClick={() => setIsScannerOpen(true)}>
+          Сканировать QR
+        </Button>
         <FooterLinks onRules={onRules} onPrivacy={onPrivacy} />
       </div>
+
+      <QrScannerModal
+        open={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+      />
     </div>
   );
 }
@@ -433,6 +443,7 @@ export function CabinetScreen({
   const left = APP_CONFIG.TOTAL_PAVILIONS - n;
   const done = n >= APP_CONFIG.TOTAL_PAVILIONS;
   const { cabinet } = TEXTS;
+  const [scannerOpen, setScannerOpen] = React.useState(false);
 
   const masked =
     phone.length >= 11
@@ -491,6 +502,19 @@ export function CabinetScreen({
       <div className="card" style={{ marginTop: 12 }}>
         <PavilionList visited={pavilions} />
       </div>
+
+      <Button
+        variant="outline"
+        onClick={() => setScannerOpen(true)}
+        style={{ marginTop: 14 }}
+      >
+        Сканировать QR
+      </Button>
+
+      <QrScannerModal
+        open={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+      />
 
       <FooterLinks onRules={onRules} onPrivacy={onPrivacy} />
     </div>
