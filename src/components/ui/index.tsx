@@ -28,12 +28,16 @@ interface SpinnerProps {
 interface LogoProps {
   small?: boolean;
   centered?: boolean;
+  height?: number;
 }
 
 export function Logo({
   small = false,
   centered = false,
+  height,
 }: LogoProps): React.ReactElement {
+  const logoHeight = height ?? (small ? 34 : 42);
+
   return (
     <div
       style={{
@@ -48,7 +52,7 @@ export function Logo({
         alt="Площадь цветов"
         style={{
           display: "block",
-          height: small ? 34 : 42,
+          height: logoHeight,
           width: "auto",
           objectFit: "contain",
         }}

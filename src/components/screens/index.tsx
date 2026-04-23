@@ -38,22 +38,14 @@ export function WelcomeScreen({
   const { welcome } = TEXTS;
 
   return (
-    <div className="screen fade">
+    <div className="screen fade welcome-screen">
       <div className="bg-orb orb1" />
       <div className="bg-orb orb2" />
 
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          paddingTop: 20,
-        }}
-      >
+      <div className="welcome-main">
         <div className="hero-brand">
           <div className="hero-logo">
-            <Logo />
+            <Logo height={64} />
           </div>
 
           <div className="hero-flowers">
