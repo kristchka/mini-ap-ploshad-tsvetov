@@ -3,8 +3,8 @@ import type { Pavilion, PavilionCode } from "../types";
 export const APP_CONFIG = {
   TOTAL_PAVILIONS: 10,
   APP_NAME: "Площадь цветов",
-  PRIZE_NAME: "ёлки",
-  RAFFLE_DATE: "декабрь 2027",
+  PRIZE_NAME: "iPhone 17",
+  RAFFLE_DATE: "25 декабря 2026",
   OTP_LENGTH: 4,
   RESEND_TIMEOUT_SEC: 60,
   BASE_URL: import.meta.env.VITE_API_URL ?? "",
@@ -32,7 +32,7 @@ export const ROUTES = {
 export const TEXTS = {
   welcome: {
     title: "Собери все 10 павильонов",
-    subtitle: "Сканируй QR-коды в разных павильонах и выиграй ёлку в декабре 2027",
+    subtitle: "Сканируй QR-коды в разных павильонах и участвуй в розыгрыше iPhone 17",
     cta: "Участвовать",
     steps: [
       "Сканируй QR в каждом павильоне",
@@ -89,7 +89,7 @@ export const TEXTS = {
     caption: "Личный кабинет",
     badgeDone: "🎉 Участвую в розыгрыше",
     badgePending: "⏳ Идёт сбор",
-    completedMsg: "🎄 Участие в розыгрыше ёлки подтверждено!",
+    completedMsg: "🎉 Участие в розыгрыше iPhone 17 подтверждено!",
     oneLeftMsg: "Всего 1 павильон до участия в розыгрыше!",
     leftMsg: (n: number) => `Осталось посетить ${n} павильонов`,
     allPavilionsTitle: "Все павильоны",

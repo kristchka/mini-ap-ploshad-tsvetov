@@ -41,9 +41,6 @@ export function WelcomeScreen({
     <div className="screen fade">
       <div className="bg-orb orb1" />
       <div className="bg-orb orb2" />
-      <div className="hdr">
-        <Logo />
-      </div>
 
       <div
         style={{
@@ -54,11 +51,45 @@ export function WelcomeScreen({
           paddingTop: 20,
         }}
       >
-        <div style={{ textAlign: "center", fontSize: 54, marginBottom: 18, lineHeight: 1 }}>
-          🌺🌸🌼
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 14,
+            marginBottom: 22,
+            flexWrap: "wrap",
+          }}
+        >
+          <div
+            style={{
+              width: 54,
+              height: 54,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <Logo />
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              fontSize: 50,
+              lineHeight: 1,
+            }}
+          >
+            <span>🌺</span>
+            <span>🌸</span>
+            <span>🌼</span>
+          </div>
         </div>
 
-        <div className="display">
+        <div className="display" style={{ textAlign: "center" }}>
           {welcome.title.split(" ").slice(0, 2).join(" ")}
           <br />
           {welcome.title.split(" ").slice(2).join(" ")}
@@ -243,7 +274,9 @@ export function VerifyScreen({
           {digits.map((d, i) => (
             <input
               key={i}
-              ref={(el) => { refsArray[i] = el; }}
+              ref={(el) => {
+                refsArray[i] = el;
+              }}
               className={`otp${error ? " err" : ""}`}
               type="tel"
               inputMode="numeric"
@@ -338,20 +371,48 @@ export function ResultScreen({
 
         {status === "completed" ? (
           <div className="card" style={{ marginTop: 28, textAlign: "center" }}>
-            <div style={{ fontSize: 48 }}>🌲</div>
+            <div style={{ fontSize: 48 }}>🎉</div>
+
             <div
               style={{
                 fontFamily: "Playfair Display, serif",
-                fontSize: 19,
+                fontSize: 22,
                 fontWeight: 600,
                 color: "var(--green)",
                 marginTop: 10,
               }}
             >
-              Участие в розыгрыше подтверждено
+              Поздравляем!
             </div>
-            <p style={{ fontSize: 14, color: "var(--muted)", marginTop: 8 }}>
-              Розыгрыш в {APP_CONFIG.RAFFLE_DATE}
+
+            <p
+              style={{
+                fontSize: 15,
+                color: "var(--text)",
+                marginTop: 12,
+                lineHeight: 1.55,
+              }}
+            >
+              Вы успешно собрали все 10 павильонов и теперь участвуете в розыгрыше{" "}
+              <strong>{APP_CONFIG.PRIZE_NAME}</strong> 🎉
+            </p>
+
+            <div
+              style={{
+                marginTop: 16,
+                padding: "12px 14px",
+                borderRadius: 14,
+                background: "rgba(47,107,59,.08)",
+                color: "var(--green)",
+                fontSize: 14,
+                fontWeight: 600,
+              }}
+            >
+              Результаты розыгрыша будут объявлены 25 декабря.
+            </div>
+
+            <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 12 }}>
+              Спасибо за участие и удачи!
             </p>
           </div>
         ) : (

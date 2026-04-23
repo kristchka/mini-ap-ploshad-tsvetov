@@ -12,7 +12,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 }
 
 interface BadgeProps {
-  variant: "success" | "pending";
+  variant: "success" | "pending" | "warning";
   children: React.ReactNode;
 }
 
@@ -25,10 +25,34 @@ interface SpinnerProps {
   dark?: boolean;
 }
 
-export function Logo(): React.ReactElement {
+interface LogoProps {
+  small?: boolean;
+  centered?: boolean;
+}
+
+export function Logo({
+  small = false,
+  centered = false,
+}: LogoProps): React.ReactElement {
   return (
-    <div className="logo">
-      Площадь<em>цветов</em>
+    <div
+      style={{
+        display: "flex",
+        justifyContent: centered ? "center" : "flex-start",
+        alignItems: "center",
+        width: "100%",
+      }}
+    >
+      <img
+        src="/logo-main.png"
+        alt="Площадь цветов"
+        style={{
+          display: "block",
+          height: small ? 34 : 42,
+          width: "auto",
+          objectFit: "contain",
+        }}
+      />
     </div>
   );
 }
@@ -85,7 +109,7 @@ export function TextInput({
 
 export function Badge({ variant, children }: BadgeProps): React.ReactElement {
   return (
-    <span className={`badge badge-${variant === "success" ? "g" : "o"}`}>
+    <span className={`badge badge-${variant}`}>
       {children}
     </span>
   );
