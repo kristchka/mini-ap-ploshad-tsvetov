@@ -7,6 +7,7 @@ type Props = {
 };
 
 type ScanState = "idle" | "starting" | "success" | "error";
+type CameraMode = "environment" | "user";
 
 function buildTargetFromScan(raw: string): string | null {
   const value = raw.trim();
@@ -35,6 +36,10 @@ export function QrScannerModal({
   const [scanState, setScanState] = React.useState<ScanState>("idle");
   const [message, setMessage] = React.useState("");
 
+  const [cameraMode, setCameraMode] = React.useState<CameraMode>("environment");
+  const [hasMultipleCameras, setHasMultipleCameras] = React.useState(false);
+  const [switchingCamera, setSwitchingCamera] = React.useState(false);
+
   const stopScanner = React.useCallback(async () => {
     const scanner = scannerRef.current;
     if (!scanner) return;
@@ -47,30 +52,33 @@ export function QrScannerModal({
     scannerRef.current = null;
   }, []);
 
-  const goToTarget = React.useCallback(async (raw: string) => {
-    const target = buildTargetFromScan(raw);
+  const goToTarget = React.useCallback(
+    async (raw: string) => {
+      const target = buildTargetFromScan(raw);
 
-    if (!target) {
-      setScanState("error");
-      setMessage("QR-код прочитан, но формат не распознан.");
-      return;
-    }
-
-    setScanState("success");
-    setMessage("QR-код распознан. Переходим...");
-
-    try {
-      if (navigator.vibrate) {
-        navigator.vibrate(80);
+      if (!target) {
+        setScanState("error");
+        setMessage("QR-код прочитан, но формат не распознан.");
+        return;
       }
-    } catch {}
 
-    await stopScanner();
+      setScanState("success");
+      setMessage("QR-код распознан. Переходим...");
 
-    window.setTimeout(() => {
-      window.location.assign(target);
-    }, 700);
-  }, [stopScanner]);
+      try {
+        if (navigator.vibrate) {
+          navigator.vibrate(80);
+        }
+      } catch {}
+
+      await stopScanner();
+
+      window.setTimeout(() => {
+        window.location.assign(target);
+      }, 700);
+    },
+    [stopScanner]
+  );
 
   React.useEffect(() => {
     if (!open || !videoRef.current) return;
@@ -94,7 +102,7 @@ export function QrScannerModal({
             await goToTarget(text);
           },
           {
-            preferredCamera: "environment",
+            preferredCamera: cameraMode,
             highlightScanRegion: true,
             highlightCodeOutline: true,
             returnDetailedScanResult: true,
@@ -108,6 +116,13 @@ export function QrScannerModal({
         if (cancelled) {
           await stopScanner();
           return;
+        }
+
+        try {
+          const cameras = await QrScanner.listCameras(true);
+          setHasMultipleCameras(cameras.length > 1);
+        } catch {
+          setHasMultipleCameras(false);
         }
 
         setScanState("idle");
@@ -124,12 +139,13 @@ export function QrScannerModal({
       cancelled = true;
       stopScanner();
     };
-  }, [open, goToTarget, stopScanner]);
+  }, [open, goToTarget, stopScanner, cameraMode]);
 
   React.useEffect(() => {
     if (!open) {
       setScanState("idle");
       setMessage("");
+      setSwitchingCamera(false);
     }
   }, [open]);
 
@@ -156,6 +172,36 @@ export function QrScannerModal({
       if (inputRef.current) {
         inputRef.current.value = "";
       }
+    }
+  }
+
+  async function handleSwitchCamera() {
+    const scanner = scannerRef.current;
+    if (!scanner) return;
+
+    const nextCamera: CameraMode =
+      cameraMode === "environment" ? "user" : "environment";
+
+    setSwitchingCamera(true);
+    setScanState("starting");
+    setMessage(
+      nextCamera === "user"
+        ? "Переключаем на фронтальную камеру..."
+        : "Переключаем на основную камеру..."
+    );
+
+    try {
+      await scanner.setCamera(nextCamera);
+      setCameraMode(nextCamera);
+      setScanState("idle");
+      setMessage("Наведите камеру на QR-код павильона.");
+    } catch (e: any) {
+      setScanState("error");
+      setMessage(
+        e?.message || "Не удалось переключить камеру. Попробуйте ещё раз."
+      );
+    } finally {
+      setSwitchingCamera(false);
     }
   }
 
@@ -366,11 +412,36 @@ export function QrScannerModal({
           style={{ display: "none" }}
         />
 
+        {hasMultipleCameras && (
+          <button
+            type="button"
+            onClick={handleSwitchCamera}
+            disabled={switchingCamera}
+            style={{
+              marginTop: 14,
+              width: "100%",
+              height: 54,
+              borderRadius: 18,
+              border: "1px solid #e7dcd0",
+              background: "rgba(255,253,250,.95)",
+              color: "var(--green-dark)",
+              fontWeight: 700,
+              fontSize: 16,
+              cursor: "pointer",
+              opacity: switchingCamera ? 0.7 : 1,
+            }}
+          >
+            {cameraMode === "environment"
+              ? "Переключить на фронтальную камеру"
+              : "Переключить на основную камеру"}
+          </button>
+        )}
+
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
           style={{
-            marginTop: 14,
+            marginTop: 10,
             width: "100%",
             height: 54,
             borderRadius: 18,
