@@ -112,7 +112,7 @@ export function LoginScreen({
   const canSubmit = isValid && agreed && !isLoading;
 
   return (
-    <div className="screen fade">
+    <div className="screen fade auth-screen">
       <div className="bg-orb orb1" />
       <div className="bg-orb orb2" />
       <div className="hdr">
@@ -218,7 +218,7 @@ export function VerifyScreen({
   };
 
   return (
-    <div className="screen fade">
+    <div className="screen fade auth-screen">
       <div className="bg-orb orb1" />
       <div className="bg-orb orb2" />
       <div className="hdr">
