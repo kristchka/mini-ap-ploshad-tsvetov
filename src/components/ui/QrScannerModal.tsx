@@ -24,19 +24,53 @@ function buildTargetFromScan(raw: string): string | null {
   return null;
 }
 
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Не удалось запустить камеру.";
-}
-
 export function QrScannerModal({
   open,
   onClose,
 }: Props): React.ReactElement | null {
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
   const scannerRef = React.useRef<QrScanner | null>(null);
 
   const [scanState, setScanState] = React.useState<ScanState>("idle");
   const [message, setMessage] = React.useState("");
+
+  const stopScanner = React.useCallback(async () => {
+    const scanner = scannerRef.current;
+    if (!scanner) return;
+
+    try {
+      await scanner.stop();
+    } catch {}
+
+    scanner.destroy();
+    scannerRef.current = null;
+  }, []);
+
+  const goToTarget = React.useCallback(async (raw: string) => {
+    const target = buildTargetFromScan(raw);
+
+    if (!target) {
+      setScanState("error");
+      setMessage("QR-код прочитан, но формат не распознан.");
+      return;
+    }
+
+    setScanState("success");
+    setMessage("QR-код распознан. Переходим...");
+
+    try {
+      if (navigator.vibrate) {
+        navigator.vibrate(80);
+      }
+    } catch {}
+
+    await stopScanner();
+
+    window.setTimeout(() => {
+      window.location.assign(target);
+    }, 700);
+  }, [stopScanner]);
 
   React.useEffect(() => {
     if (!open || !videoRef.current) return;
@@ -57,33 +91,7 @@ export function QrScannerModal({
           videoRef.current!,
           async (result) => {
             const text = typeof result === "string" ? result : result.data;
-            const target = buildTargetFromScan(text);
-
-            if (!target) {
-              setScanState("error");
-              setMessage("QR-код прочитан, но формат не распознан.");
-              return;
-            }
-
-            setScanState("success");
-            setMessage("QR-код распознан. Переходим...");
-
-            try {
-              if (navigator.vibrate) {
-                navigator.vibrate(80);
-              }
-            } catch {}
-
-            try {
-              await scanner.stop();
-            } catch {}
-
-            scanner.destroy();
-            scannerRef.current = null;
-
-            window.setTimeout(() => {
-              window.location.assign(target);
-            }, 700);
+            await goToTarget(text);
           },
           {
             preferredCamera: "environment",
@@ -98,19 +106,15 @@ export function QrScannerModal({
         await scanner.start();
 
         if (cancelled) {
-          try {
-            await scanner.stop();
-          } catch {}
-          scanner.destroy();
-          scannerRef.current = null;
+          await stopScanner();
           return;
         }
 
         setScanState("idle");
         setMessage("Наведите камеру на QR-код павильона.");
-      } catch (error) {
+      } catch (e: any) {
         setScanState("error");
-        setMessage(getErrorMessage(error));
+        setMessage(e?.message || "Не удалось запустить камеру.");
       }
     }
 
@@ -118,16 +122,9 @@ export function QrScannerModal({
 
     return () => {
       cancelled = true;
-      const scanner = scannerRef.current;
-      if (scanner) {
-        try {
-          scanner.stop();
-        } catch {}
-        scanner.destroy();
-        scannerRef.current = null;
-      }
+      stopScanner();
     };
-  }, [open]);
+  }, [open, goToTarget, stopScanner]);
 
   React.useEffect(() => {
     if (!open) {
@@ -135,6 +132,32 @@ export function QrScannerModal({
       setMessage("");
     }
   }, [open]);
+
+  async function handlePickFromGallery(
+    e: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setScanState("starting");
+    setMessage("Читаем QR-код из изображения...");
+
+    try {
+      const result = await QrScanner.scanImage(file, {
+        returnDetailedScanResult: true,
+      });
+
+      const text = typeof result === "string" ? result : result.data;
+      await goToTarget(text);
+    } catch {
+      setScanState("error");
+      setMessage("Не удалось распознать QR-код на изображении.");
+    } finally {
+      if (inputRef.current) {
+        inputRef.current.value = "";
+      }
+    }
+  }
 
   if (!open) return null;
 
@@ -284,9 +307,11 @@ export function QrScannerModal({
                 color: "#fff",
                 fontWeight: 600,
                 fontSize: 15,
+                textAlign: "center",
+                padding: 20,
               }}
             >
-              Запускаем камеру...
+              {message || "Запускаем камеру..."}
             </div>
           )}
 
@@ -333,11 +358,38 @@ export function QrScannerModal({
           {message || "Наведите камеру на QR-код павильона."}
         </div>
 
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          onChange={handlePickFromGallery}
+          style={{ display: "none" }}
+        />
+
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          style={{
+            marginTop: 14,
+            width: "100%",
+            height: 54,
+            borderRadius: 18,
+            border: "1px solid #e7dcd0",
+            background: "rgba(255,253,250,.95)",
+            color: "var(--green-dark)",
+            fontWeight: 700,
+            fontSize: 16,
+            cursor: "pointer",
+          }}
+        >
+          Загрузить QR из фото
+        </button>
+
         <button
           type="button"
           onClick={onClose}
           style={{
-            marginTop: 14,
+            marginTop: 10,
             width: "100%",
             height: 54,
             borderRadius: 18,
