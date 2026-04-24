@@ -1679,3 +1679,100 @@ body {
   font-size: 14px;
   padding: 8px 12px;
 }
+
+.footer-links,
+.ftr,
+.hero-screen .footer-links,
+.hero-screen .footer,
+.hero-screen .ftr,
+.auth-screen .footer-links,
+.auth-screen .footer,
+.auth-screen .ftr {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.footer-links a,
+.footer-links button,
+.ftr .lnk,
+.hero-screen .footer-links a,
+.hero-screen .footer-links button,
+.hero-screen .ftr .lnk,
+.auth-screen .footer-links a,
+.auth-screen .footer-links button,
+.auth-screen .ftr .lnk {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(47, 107, 59, 0.18);
+  background: rgba(255, 253, 250, 0.88);
+  color: var(--green-dark);
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: none;
+  transition: all 0.2s ease;
+}
+
+.footer-links a:hover,
+.footer-links button:hover,
+.ftr .lnk:hover,
+.hero-screen .footer-links a:hover,
+.hero-screen .footer-links button:hover,
+.hero-screen .ftr .lnk:hover,
+.auth-screen .footer-links a:hover,
+.auth-screen .footer-links button:hover,
+.auth-screen .ftr .lnk:hover {
+  background: rgba(47, 107, 59, 0.06);
+  border-color: rgba(47, 107, 59, 0.3);
+  color: var(--green-dark);
+  text-decoration: none;
+}
+
+.footer-links a:active,
+.footer-links button:active,
+.ftr .lnk:active,
+.hero-screen .footer-links a:active,
+.hero-screen .footer-links button:active,
+.hero-screen .ftr .lnk:active,
+.auth-screen .footer-links a:active,
+.auth-screen .footer-links button:active,
+.auth-screen .ftr .lnk:active {
+  transform: translateY(1px);
+}
+
+@media (max-width: 480px) {
+  .footer-links,
+  .ftr,
+  .hero-screen .footer-links,
+  .hero-screen .footer,
+  .hero-screen .ftr,
+  .auth-screen .footer-links,
+  .auth-screen .footer,
+  .auth-screen .ftr {
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .footer-links a,
+  .footer-links button,
+  .ftr .lnk,
+  .hero-screen .footer-links a,
+  .hero-screen .footer-links button,
+  .hero-screen .ftr .lnk,
+  .auth-screen .footer-links a,
+  .auth-screen .footer-links button,
+  .auth-screen .ftr .lnk {
+    min-height: 40px;
+    padding: 0 14px;
+    border-radius: 14px;
+    font-size: 14px;
+  }
+}
