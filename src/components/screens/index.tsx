@@ -8,9 +8,9 @@ import {
   FooterLinks,
   Badge,
 } from "../ui";
-import { QrScannerModal } from "../ui/QrScannerModal";
 import { PavilionGrid, PavilionList } from "../PavilionGrid";
 import { usePhoneFormatter, useOTP, useTimer } from "../../hooks";
+import { QrScannerModal } from "../ui/QrScannerModal";
 
 export function LoadingScreen(): React.ReactElement {
   return (
@@ -37,7 +37,6 @@ export function WelcomeScreen({
   onPrivacy,
 }: WelcomeScreenProps): React.ReactElement {
   const { welcome } = TEXTS;
-  const [isScannerOpen, setIsScannerOpen] = React.useState(false);
 
   return (
     <div className="screen fade hero-screen">
@@ -80,16 +79,8 @@ export function WelcomeScreen({
 
       <div className="hero-actions">
         <Button onClick={onStart}>{welcome.cta}</Button>
-        <Button variant="outline" onClick={() => setIsScannerOpen(true)}>
-          Сканировать QR
-        </Button>
         <FooterLinks onRules={onRules} onPrivacy={onPrivacy} />
       </div>
-
-      <QrScannerModal
-        open={isScannerOpen}
-        onClose={() => setIsScannerOpen(false)}
-      />
     </div>
   );
 }
@@ -232,20 +223,7 @@ export function VerifyScreen({
           <br />
           из SMS
         </div>
-        <p className="sub">Отправили на {masked}</p>
-
-        <div
-          style={{
-            marginTop: 12,
-            padding: "8px 13px",
-            background: "rgba(193,123,92,.1)",
-            borderRadius: 10,
-            fontSize: 13,
-            color: "var(--terra)",
-          }}
-        >
-          🎭 Демо: введите любые 4 цифры
-        </div>
+        <p className="sub">Отправили код на {masked}</p>
 
         <div className="otp-row">
           {digits.map((d, i) => (
@@ -328,26 +306,26 @@ export function ResultScreen({
     status === "success" ? "ok" : status === "already_counted" ? "dup" : "win";
 
   return (
-    <div className="screen fade">
+    <div className="screen fade result-screen">
       <div className="bg-orb orb1" />
       <div className="bg-orb orb2" />
       <div className="hdr">
         <Logo />
       </div>
 
-      <div
-        style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}
-      >
+      <div className="result-body">
         <div className={`res-ico ${icoClass}`}>{cfg.icon}</div>
+
         <div className="h2" style={{ textAlign: "center" }}>
           {cfg.title}
         </div>
+
         <p className="sub" style={{ textAlign: "center" }}>
           {subtitle}
         </p>
 
         {status === "completed" ? (
-          <div className="card" style={{ marginTop: 28, textAlign: "center" }}>
+          <div className="card result-completed-card" style={{ marginTop: 28, textAlign: "center" }}>
             <div style={{ fontSize: 48 }}>🎉</div>
 
             <div
@@ -393,7 +371,7 @@ export function ResultScreen({
             </p>
           </div>
         ) : (
-          <div className="card" style={{ marginTop: 26 }}>
+          <div className="card result-progress-card" style={{ marginTop: 26 }}>
             <PavilionGrid
               visited={pavilions}
               current={status === "success" ? code : null}
@@ -439,11 +417,12 @@ export function CabinetScreen({
   onRules,
   onPrivacy,
 }: CabinetScreenProps): React.ReactElement {
+  const [scannerOpen, setScannerOpen] = React.useState(false);
+
   const n = pavilions.length;
   const left = APP_CONFIG.TOTAL_PAVILIONS - n;
   const done = n >= APP_CONFIG.TOTAL_PAVILIONS;
   const { cabinet } = TEXTS;
-  const [scannerOpen, setScannerOpen] = React.useState(false);
 
   const masked =
     phone.length >= 11
@@ -451,9 +430,10 @@ export function CabinetScreen({
       : phone;
 
   return (
-    <div className="screen fade">
+    <div className="screen fade cabinet-screen">
       <div className="bg-orb orb1" />
       <div className="bg-orb orb2" />
+
       <div className="hdr">
         <Logo />
         <button
@@ -465,7 +445,7 @@ export function CabinetScreen({
         </button>
       </div>
 
-      <div style={{ paddingTop: 6 }}>
+      <div className="cabinet-meta" style={{ paddingTop: 6 }}>
         <p className="caption">{cabinet.caption}</p>
         <div style={{ fontFamily: "Playfair Display, serif", fontSize: 20, fontWeight: 600 }}>
           {masked}
@@ -477,7 +457,7 @@ export function CabinetScreen({
         </div>
       </div>
 
-      <div className="card" style={{ marginTop: 18 }}>
+      <div className="card cabinet-progress-card" style={{ marginTop: 18 }}>
         <PavilionGrid
           visited={pavilions}
           total={APP_CONFIG.TOTAL_PAVILIONS}
@@ -499,15 +479,11 @@ export function CabinetScreen({
         </p>
       </div>
 
-      <div className="card" style={{ marginTop: 12 }}>
+      <div className="card cabinet-list-card" style={{ marginTop: 12 }}>
         <PavilionList visited={pavilions} />
       </div>
 
-      <Button
-        variant="outline"
-        onClick={() => setScannerOpen(true)}
-        style={{ marginTop: 14 }}
-      >
+      <Button onClick={() => setScannerOpen(true)} style={{ marginTop: 14 }}>
         Сканировать QR
       </Button>
 

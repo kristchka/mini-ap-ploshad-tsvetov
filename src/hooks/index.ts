@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import type { PavilionCode, CheckInStatus, PageName } from "../types";
-import { api } from "../lib/api";
 import { submitCheckInByToken, getProgressByPhone } from "../lib/checkin";
-import { getStoredUser, clearStoredUser } from "../lib/storage";
+import { getStoredUser, clearStoredUser, setStoredUser } from "../lib/storage";
+import { sendOtp, verifyOtp, normalizePhone } from "../lib/otp";
 import { APP_CONFIG } from "../config";
 
 const DEMO_QR_TOKENS: Record<PavilionCode, string> = {
@@ -311,42 +311,72 @@ export function useApp() {
   }, [qrToken, hasQrToken, doCheckInByToken, loadProgress]);
 
   const handleSendCode = useCallback(async (rawPhone: string) => {
-    setIsLoading(true);
     setLoginError("");
+    setIsLoading(true);
 
     try {
-      await api.sendCode({ phone: rawPhone });
-      setPhone(rawPhone);
+      const phone = normalizePhone(rawPhone);
+      const result = await sendOtp(phone);
+
+      setIsLoading(false);
+
+      if (!result.ok) {
+        setLoginError(result.message || "Не удалось отправить код");
+        return;
+      }
+
+      setPhone(phone);
+
+      const isLocalDev =
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1";
+
+      if (isLocalDev && result.debugCode) {
+        window.alert(`Тестовый код: ${result.debugCode}`);
+      }
+
       setPage("verify");
     } catch {
-      setLoginError("Ошибка отправки. Попробуйте ещё раз.");
-    } finally {
       setIsLoading(false);
+      setLoginError("Ошибка отправки. Попробуйте ещё раз.");
     }
   }, []);
 
   const handleVerify = useCallback(
     async (code: string) => {
-      setIsLoading(true);
       setVerifyError("");
+      setIsLoading(true);
 
       try {
-        const res = await api.verifyCode({ phone, code });
+        const normalizedPhone = normalizePhone(phone);
+        const result = await verifyOtp(normalizedPhone, code);
 
-        if (!res.ok) {
-          setVerifyError("Неверный код. Попробуйте ещё раз.");
+        setIsLoading(false);
+
+        if (!result.ok) {
+          setVerifyError(result.message || "Неверный код");
           return;
         }
 
+        const verifiedPhone = normalizePhone(result.phone || normalizedPhone);
+
+        localStorage.setItem("promo_phone", verifiedPhone);
+        localStorage.setItem("promo_auth", "1");
+
+        setPhone(verifiedPhone);
+        setStoredUser({
+          phone: verifiedPhone,
+          token: `otp_${Date.now()}`,
+        });
+
         if (hasQrToken && qrToken) {
-          await doCheckInByToken(qrToken, phone);
+          await doCheckInByToken(qrToken, verifiedPhone);
         } else {
-          await loadProgress(phone);
+          await loadProgress(verifiedPhone);
         }
       } catch {
-        setVerifyError("Ошибка сети. Попробуйте ещё раз.");
-      } finally {
         setIsLoading(false);
+        setVerifyError("Ошибка сети. Попробуйте ещё раз.");
       }
     },
     [phone, qrToken, hasQrToken, doCheckInByToken, loadProgress]
@@ -363,7 +393,12 @@ export function useApp() {
 
   const handleResend = useCallback(async () => {
     try {
-      await api.sendCode({ phone });
+      const normalizedPhone = normalizePhone(phone);
+      const result = await sendOtp(normalizedPhone);
+
+      if (result.ok) {
+        setPhone(result.phone);
+      }
     } catch {
       // silently fail on resend
     }

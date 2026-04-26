@@ -1776,3 +1776,326 @@ body {
     font-size: 14px;
   }
 }
+
+/* =========================================
+   RESULT + CABINET / RESPONSIVE PACK
+========================================= */
+
+.result-screen,
+.cabinet-screen {
+  min-height: 100vh;
+  padding: 18px 16px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.result-screen .hdr,
+.cabinet-screen .hdr {
+  margin-bottom: 8px;
+}
+
+.result-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.result-screen .res-ico {
+  margin: 0 auto 14px;
+}
+
+.result-screen .h2 {
+  font-family: "Cormorant Garamond", "Playfair Display", serif;
+  font-size: 40px;
+  line-height: 0.96;
+  font-weight: 700;
+  color: var(--green-dark);
+  text-align: center;
+}
+
+.result-screen .sub {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--muted);
+  max-width: 340px;
+  margin: 12px auto 0;
+  text-align: center;
+}
+
+.result-completed-card,
+.result-progress-card,
+.cabinet-progress-card,
+.cabinet-list-card {
+  border-radius: 24px;
+  background: rgba(255, 253, 250, 0.92);
+  border: 1px solid #e7dcd0;
+  box-shadow: 0 10px 30px rgba(46, 42, 39, 0.05);
+  backdrop-filter: blur(4px);
+}
+
+.result-completed-card {
+  padding: 20px 18px;
+}
+
+.result-progress-card {
+  padding: 18px 16px;
+}
+
+.cabinet-progress-card,
+.cabinet-list-card {
+  padding: 18px 16px;
+}
+
+.cabinet-screen .hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cabinet-screen .caption {
+  color: var(--accent-coral);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.cabinet-meta {
+  text-align: center;
+}
+
+.cabinet-screen .back {
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(217, 79, 79, 0.16);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: none;
+}
+
+.cabinet-screen .btn,
+.result-screen .btn {
+  min-height: 58px;
+  border-radius: 20px;
+}
+
+.cabinet-screen .footer-links,
+.cabinet-screen .footer,
+.cabinet-screen .ftr {
+  margin-top: 18px;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cabinet-screen .footer-links a,
+.cabinet-screen .footer-links button,
+.cabinet-screen .footer a,
+.cabinet-screen .footer button,
+.cabinet-screen .ftr .lnk,
+.cabinet-screen a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(47, 107, 59, 0.18);
+  background: rgba(255, 253, 250, 0.88);
+  color: var(--green-dark);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: none;
+  transition: all 0.2s ease;
+}
+
+.cabinet-screen .footer-links a:hover,
+.cabinet-screen .footer-links button:hover,
+.cabinet-screen .footer a:hover,
+.cabinet-screen .footer button:hover,
+.cabinet-screen .ftr .lnk:hover,
+.cabinet-screen a:hover {
+  background: rgba(47, 107, 59, 0.06);
+  border-color: rgba(47, 107, 59, 0.3);
+}
+
+/* ===== 320-374 ===== */
+@media (max-width: 374px) {
+  .result-screen,
+  .cabinet-screen {
+    padding: 14px 12px 20px;
+  }
+
+  .result-screen .h2 {
+    font-size: 34px;
+    line-height: 0.95;
+  }
+
+  .result-screen .sub {
+    font-size: 13px;
+    max-width: 280px;
+    margin-top: 10px;
+  }
+
+  .result-completed-card,
+  .result-progress-card,
+  .cabinet-progress-card,
+  .cabinet-list-card {
+    border-radius: 20px;
+    padding: 14px 12px;
+  }
+
+  .result-completed-card p,
+  .result-progress-card p,
+  .cabinet-progress-card p,
+  .cabinet-list-card p {
+    font-size: 13px !important;
+  }
+
+  .cabinet-screen .caption {
+    font-size: 12px;
+  }
+
+  .cabinet-meta {
+    text-align: center;
+  }
+
+  .cabinet-screen .back {
+    min-height: 38px;
+    padding: 0 12px;
+    font-size: 13px;
+    border-radius: 12px;
+  }
+
+  .cabinet-screen .btn,
+  .result-screen .btn {
+    min-height: 54px;
+    font-size: 16px;
+    border-radius: 18px;
+  }
+
+  .cabinet-screen .footer-links,
+  .cabinet-screen .footer,
+  .cabinet-screen .ftr {
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .cabinet-screen .footer-links a,
+  .cabinet-screen .footer-links button,
+  .cabinet-screen .footer a,
+  .cabinet-screen .footer button,
+  .cabinet-screen .ftr .lnk,
+  .cabinet-screen a {
+    min-height: 40px;
+    padding: 0 14px;
+    font-size: 13px;
+    border-radius: 14px;
+  }
+}
+
+/* ===== 375-429 ===== */
+@media (min-width: 375px) and (max-width: 429px) {
+  .result-screen .h2 {
+    font-size: 40px;
+  }
+
+  .result-screen .sub {
+    max-width: 330px;
+  }
+
+  .cabinet-screen .btn,
+  .result-screen .btn {
+    min-height: 58px;
+  }
+}
+
+/* ===== 430-767 ===== */
+@media (min-width: 430px) and (max-width: 767px) {
+  .result-screen,
+  .cabinet-screen {
+    padding: 24px 22px 28px;
+    justify-content: center;
+  }
+
+  .result-screen .h2 {
+    font-size: 48px;
+  }
+
+  .result-screen .sub {
+    font-size: 16px;
+    max-width: 400px;
+    margin-top: 14px;
+  }
+
+  .result-completed-card,
+  .result-progress-card,
+  .cabinet-progress-card,
+  .cabinet-list-card {
+    border-radius: 24px;
+  }
+
+  .cabinet-screen .back {
+    min-height: 42px;
+    padding: 0 14px;
+  }
+
+  .cabinet-screen .btn,
+  .result-screen .btn {
+    min-height: 60px;
+    border-radius: 22px;
+    font-size: 17px;
+  }
+
+  .cabinet-screen .footer-links,
+  .cabinet-screen .footer,
+  .cabinet-screen .ftr {
+    gap: 14px;
+  }
+}
+
+/* ===== 768+ ===== */
+@media (min-width: 768px) {
+  .result-screen,
+  .cabinet-screen {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 36px 28px 36px;
+    justify-content: center;
+  }
+
+  .result-screen .h2 {
+    font-size: 58px;
+  }
+
+  .result-screen .sub {
+    font-size: 17px;
+    max-width: 480px;
+    margin-top: 16px;
+  }
+
+  .cabinet-screen .back {
+    min-height: 44px;
+    padding: 0 16px;
+  }
+
+  .cabinet-screen .btn,
+  .result-screen .btn {
+    min-height: 62px;
+    border-radius: 22px;
+    font-size: 18px;
+  }
+
+  .cabinet-screen .footer-links,
+  .cabinet-screen .footer,
+  .cabinet-screen .ftr {
+    gap: 16px;
+    margin-top: 20px;
+  }
+}
