@@ -20,6 +20,19 @@ const DEMO_QR_TOKENS: Record<PavilionCode, string> = {
 
 // Если в Supabase у тебя другие qr_token, просто замени значения выше на свои.
 
+const STARTUP_REQUEST_TIMEOUT_MS = 10000;
+
+function isLocalDev(): boolean {
+  if (typeof window === "undefined") return false;
+
+  return (
+    import.meta.env.DEV &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1" ||
+      window.location.hostname === "::1")
+  );
+}
+
 function hasQrTokenInUrl(): boolean {
   if (typeof window === "undefined") return false;
 
@@ -80,6 +93,23 @@ function mapRemoteStatus(
   }
 
   return "success";
+}
+
+function withTimeout<T>(promise: Promise<T>, message: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const id = window.setTimeout(() => reject(new Error(message)), STARTUP_REQUEST_TIMEOUT_MS);
+
+    promise.then(
+      (value) => {
+        window.clearTimeout(id);
+        resolve(value);
+      },
+      (error: unknown) => {
+        window.clearTimeout(id);
+        reject(error);
+      }
+    );
+  });
 }
 
 export function useTimer(initialSeconds: number) {
@@ -160,6 +190,7 @@ export function useApp() {
   const [errorMessage, setErrorMessage] = useState("");
   const [loginError, setLoginError] = useState("");
   const [verifyError, setVerifyError] = useState("");
+  const [debugOtpCode, setDebugOtpCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const setQrCode = useCallback((code: PavilionCode) => {
@@ -207,11 +238,16 @@ export function useApp() {
     setPage("loading");
 
     try {
-      const remoteRes = await getProgressByPhone(activePhone);
+      const remoteRes = await withTimeout(
+        getProgressByPhone(activePhone),
+        "Progress request timed out"
+      );
 
       if (!remoteRes.ok) {
-        setErrorMessage(remoteRes.message || "Не удалось загрузить прогресс.");
-        setPage("error");
+        console.error("LOAD_PROGRESS_UNAVAILABLE:", remoteRes.message);
+        setPavilions([]);
+        setResultStatus(null);
+        setPage("cabinet");
         return;
       }
 
@@ -223,8 +259,9 @@ export function useApp() {
       setPage("cabinet");
     } catch (error) {
       console.error("LOAD_PROGRESS_ERROR:", error);
-      setErrorMessage("Не удалось загрузить прогресс. Попробуйте ещё раз.");
-      setPage("error");
+      setPavilions([]);
+      setResultStatus(null);
+      setPage("cabinet");
     }
   }, []);
 
@@ -247,7 +284,10 @@ export function useApp() {
       setPage("loading");
 
       try {
-        const remoteRes = await submitCheckInByToken(activePhone, token);
+        const remoteRes = await withTimeout(
+          submitCheckInByToken(activePhone, token),
+          "Check-in request timed out"
+        );
 
         if (!remoteRes.ok) {
           setErrorMessage(remoteRes.message || "Не удалось засчитать павильон.");
@@ -274,20 +314,25 @@ export function useApp() {
     let cancelled = false;
 
     (async () => {
-      const user = getStoredUser();
+      try {
+        const user = getStoredUser();
 
-      if (!user) {
+        if (!user) {
+          if (!cancelled) setPage("welcome");
+          return;
+        }
+
+        if (cancelled) return;
+        setPhone(user.phone);
+
+        if (hasQrToken && qrToken) {
+          await doCheckInByToken(qrToken, user.phone);
+        } else {
+          await loadProgress(user.phone);
+        }
+      } catch (error) {
+        console.error("STARTUP_ERROR:", error);
         if (!cancelled) setPage("welcome");
-        return;
-      }
-
-      if (cancelled) return;
-      setPhone(user.phone);
-
-      if (hasQrToken && qrToken) {
-        await doCheckInByToken(qrToken, user.phone);
-      } else {
-        await loadProgress(user.phone);
       }
     })();
 
@@ -312,6 +357,7 @@ export function useApp() {
 
   const handleSendCode = useCallback(async (rawPhone: string) => {
     setLoginError("");
+    setDebugOtpCode("");
     setIsLoading(true);
 
     try {
@@ -327,12 +373,8 @@ export function useApp() {
 
       setPhone(phone);
 
-      const isLocalDev =
-        window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1";
-
-      if (isLocalDev && result.debugCode) {
-        window.alert(`Тестовый код: ${result.debugCode}`);
+      if (isLocalDev() && result.debugCode) {
+        setDebugOtpCode(result.debugCode);
       }
 
       setPage("verify");
@@ -364,6 +406,7 @@ export function useApp() {
         localStorage.setItem("promo_auth", "1");
 
         setPhone(verifiedPhone);
+        setDebugOtpCode("");
         setStoredUser({
           phone: verifiedPhone,
           token: `otp_${Date.now()}`,
@@ -386,6 +429,7 @@ export function useApp() {
     clearStoredUser();
     setPavilions([]);
     setPhone("");
+    setDebugOtpCode("");
     setResultStatus(null);
     clearQrToken();
     setPage("welcome");
@@ -398,6 +442,7 @@ export function useApp() {
 
       if (result.ok) {
         setPhone(result.phone);
+        setDebugOtpCode(isLocalDev() && result.debugCode ? result.debugCode : "");
       }
     } catch {
       // silently fail on resend
@@ -416,6 +461,7 @@ export function useApp() {
     errorMessage,
     loginError,
     verifyError,
+    debugOtpCode,
     isLoading,
     navigate,
     setQrToken: setQrCode,

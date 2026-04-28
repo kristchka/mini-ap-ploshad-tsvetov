@@ -99,6 +99,7 @@ interface LoginScreenProps {
   onBack: () => void;
   isLoading: boolean;
   error?: string;
+  debugOtpCode?: string;
 }
 
 export function LoginScreen({
@@ -106,10 +107,28 @@ export function LoginScreen({
   onBack,
   isLoading,
   error,
+  debugOtpCode,
 }: LoginScreenProps): React.ReactElement {
   const { phone, handleChange, rawDigits, isValid } = usePhoneFormatter();
   const [agreed, setAgreed] = React.useState(false);
-  const canSubmit = isValid && agreed && !isLoading;
+  const [submitError, setSubmitError] = React.useState("");
+  const displayError = error || submitError;
+
+  const handleSubmit = () => {
+    setSubmitError("");
+
+    if (!isValid) {
+      setSubmitError(TEXTS.errors.invalidPhone);
+      return;
+    }
+
+    if (!agreed) {
+      setSubmitError("Подтвердите согласие на обработку персональных данных");
+      return;
+    }
+
+    onSubmit(rawDigits);
+  };
 
   return (
     <div className="screen fade auth-screen">
@@ -131,7 +150,7 @@ export function LoginScreen({
         <div style={{ marginTop: 30 }}>
           <label className="lbl">Номер телефона</label>
           <input
-            className={`inp${error ? " err" : ""}`}
+            className={`inp${displayError ? " err" : ""}`}
             type="tel"
             inputMode="tel"
             placeholder={TEXTS.login.phonePlaceholder}
@@ -139,7 +158,12 @@ export function LoginScreen({
             onChange={(e) => handleChange(e.target.value)}
             autoFocus
           />
-          {error && <div className="err-txt">{error}</div>}
+          {displayError && <div className="err-txt">{displayError}</div>}
+          {debugOtpCode && (
+            <div className="err-txt" style={{ color: "var(--muted)" }}>
+              Тестовый код: {debugOtpCode}
+            </div>
+          )}
 
           <label className="chk-wrap" style={{ marginTop: 16 }}>
             <input
@@ -160,8 +184,8 @@ export function LoginScreen({
       <Button
         isLoading={isLoading}
         loadingText={TEXTS.login.loadingBtn}
-        disabled={!canSubmit}
-        onClick={() => onSubmit(rawDigits)}
+        disabled={isLoading}
+        onClick={handleSubmit}
       >
         {TEXTS.login.submitBtn}
       </Button>
@@ -176,6 +200,7 @@ interface VerifyScreenProps {
   onBack: () => void;
   isLoading: boolean;
   error?: string;
+  debugOtpCode?: string;
 }
 
 export function VerifyScreen({
@@ -185,6 +210,7 @@ export function VerifyScreen({
   onBack,
   isLoading,
   error,
+  debugOtpCode,
 }: VerifyScreenProps): React.ReactElement {
   const { digits, setDigit, code, isComplete } = useOTP(APP_CONFIG.OTP_LENGTH);
   const { seconds, isExpired, reset } = useTimer(APP_CONFIG.RESEND_TIMEOUT_SEC);
@@ -233,6 +259,11 @@ export function VerifyScreen({
           из SMS
         </div>
         <p className="sub">Отправили код на {masked}</p>
+        {debugOtpCode && (
+          <p className="sub" style={{ marginTop: 8 }}>
+            Тестовый код: {debugOtpCode}
+          </p>
+        )}
 
         <div className="otp-row">
           {digits.map((d, i) => (

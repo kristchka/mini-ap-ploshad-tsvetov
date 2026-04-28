@@ -1,5 +1,5 @@
 import type { PavilionCode } from "../types";
-import { supabase } from "./supabase";
+import { hasSupabaseConfig, supabase } from "./supabase";
 
 export interface CheckInResult {
   ok: boolean;
@@ -61,6 +61,16 @@ export async function submitCheckInByToken(
   phone: string,
   qrToken: string
 ): Promise<CheckInResult> {
+  if (!hasSupabaseConfig) {
+    console.error("CHECK_IN_SKIPPED: Supabase config is missing");
+    return {
+      ok: false,
+      status: "invalid_pavilion",
+      message: "Supabase недоступен",
+      visited: [],
+    };
+  }
+
   const candidates: RpcSignatureCandidate[] = [
     {
       name: "submit_check_in_by_token",
@@ -94,34 +104,67 @@ export async function submitCheckInByToken(
 
   let lastMissingRpcError: unknown = null;
 
-  for (const candidate of candidates) {
-    const { data, error } = await supabase.rpc(candidate.name, candidate.args);
+  try {
+    for (const candidate of candidates) {
+      const { data, error } = await supabase.rpc(candidate.name, candidate.args);
 
-    if (!error) {
-      return data as CheckInResult;
+      if (!error) {
+        return data as CheckInResult;
+      }
+
+      if (isMissingCheckInRpcError(error)) {
+        lastMissingRpcError = error;
+        continue;
+      }
+
+      console.error("CHECK_IN_RPC_ERROR:", error);
+      return {
+        ok: false,
+        status: "invalid_pavilion",
+        message: "Supabase недоступен",
+        visited: [],
+      };
     }
 
-    if (isMissingCheckInRpcError(error)) {
-      lastMissingRpcError = error;
-      continue;
-    }
-
-    throw error;
+    console.error("CHECK_IN_RPC_MISSING:", lastMissingRpcError);
+    return {
+      ok: false,
+      status: "invalid_pavilion",
+      message: "Supabase недоступен",
+      visited: [],
+    };
+  } catch (error) {
+    console.error("CHECK_IN_SUPABASE_ERROR:", error);
+    return {
+      ok: false,
+      status: "invalid_pavilion",
+      message: "Supabase недоступен",
+      visited: [],
+    };
   }
-
-  throw lastMissingRpcError;
 }
 
 export async function getProgressByPhone(
   phone: string
 ): Promise<ProgressResult> {
-  const { data, error } = await supabase.rpc("get_progress_by_phone", {
-    input_phone: phone,
-  });
-
-  if (error) {
-    throw error;
+  if (!hasSupabaseConfig) {
+    console.error("LOAD_PROGRESS_SKIPPED: Supabase config is missing");
+    return { ok: false, message: "Supabase недоступен", visited: [] };
   }
 
-  return data as ProgressResult;
+  try {
+    const { data, error } = await supabase.rpc("get_progress_by_phone", {
+      input_phone: phone,
+    });
+
+    if (error) {
+      console.error("LOAD_PROGRESS_RPC_ERROR:", error);
+      return { ok: false, message: "Supabase недоступен", visited: [] };
+    }
+
+    return data as ProgressResult;
+  } catch (error) {
+    console.error("LOAD_PROGRESS_SUPABASE_ERROR:", error);
+    return { ok: false, message: "Supabase недоступен", visited: [] };
+  }
 }

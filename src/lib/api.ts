@@ -53,6 +53,7 @@ const pause = (ms: number): Promise<void> =>
 
 const MockApi = {
   async sendCode(_req: SendCodeRequest): Promise<SendCodeResponse> {
+    void _req;
     await pause(800);
     return { ok: true };
   },

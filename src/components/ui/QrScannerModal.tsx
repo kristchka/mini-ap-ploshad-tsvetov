@@ -46,7 +46,9 @@ export function QrScannerModal({
 
     try {
       await scanner.stop();
-    } catch {}
+    } catch {
+      // Scanner may already be stopped.
+    }
 
     scanner.destroy();
     scannerRef.current = null;
@@ -69,7 +71,9 @@ export function QrScannerModal({
         if (navigator.vibrate) {
           navigator.vibrate(80);
         }
-      } catch {}
+      } catch {
+        // Vibration can fail on unsupported devices.
+      }
 
       await stopScanner();
 
@@ -127,9 +131,9 @@ export function QrScannerModal({
 
         setScanState("idle");
         setMessage("Наведите камеру на QR-код павильона.");
-      } catch (e: any) {
+      } catch (e: unknown) {
         setScanState("error");
-        setMessage(e?.message || "Не удалось запустить камеру.");
+        setMessage(e instanceof Error ? e.message : "Не удалось запустить камеру.");
       }
     }
 
@@ -195,10 +199,10 @@ export function QrScannerModal({
       setCameraMode(nextCamera);
       setScanState("idle");
       setMessage("Наведите камеру на QR-код павильона.");
-    } catch (e: any) {
+    } catch (e: unknown) {
       setScanState("error");
       setMessage(
-        e?.message || "Не удалось переключить камеру. Попробуйте ещё раз."
+        e instanceof Error ? e.message : "Не удалось переключить камеру. Попробуйте ещё раз."
       );
     } finally {
       setSwitchingCamera(false);

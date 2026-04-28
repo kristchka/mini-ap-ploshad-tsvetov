@@ -1,10 +1,6 @@
 import React from "react";
-import { createClient, type Session, type User } from "@supabase/supabase-js";
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
-
-const supabase = createClient(supabaseUrl, supabaseKey);
+import type { Session, User } from "@supabase/supabase-js";
+import { supabase } from "../lib/supabase";
 
 type DashboardRow = {
   total_participants: number;
@@ -271,8 +267,8 @@ export default function AdminApp(): React.ReactElement {
       setParticipants((participantsRes.data ?? []) as ParticipantRow[]);
       setFinalists((finalistsRes.data ?? []) as FinalistRow[]);
       setPavilions((pavilionsRes.data ?? []) as PavilionStatRow[]);
-    } catch (e: any) {
-      setError(e?.message ?? "Не удалось загрузить данные админки");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Не удалось загрузить данные админки");
     } finally {
       setPageLoading(false);
     }
@@ -288,9 +284,9 @@ export default function AdminApp(): React.ReactElement {
       if (rpcError) throw rpcError;
 
       setIsAdmin(Boolean(data));
-    } catch (e: any) {
+    } catch (e: unknown) {
       setIsAdmin(false);
-      setError(e?.message ?? "Не удалось проверить права администратора");
+      setError(e instanceof Error ? e.message : "Не удалось проверить права администратора");
     }
   }, []);
 

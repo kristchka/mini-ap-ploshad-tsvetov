@@ -4,7 +4,7 @@ import App from "./App";
 import AdminApp from "./admin/AdminApp";
 import "./styles/globals.css";
 
-function Root(): React.ReactElement {
+export function Root(): React.ReactElement {
   const [isAdminRoute, setIsAdminRoute] = React.useState(
     window.location.hash.startsWith("#/admin")
   );

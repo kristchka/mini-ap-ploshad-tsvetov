@@ -1,8 +1,7 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { useApp } from "./hooks";
 import { PAVILIONS, APP_CONFIG } from "./config";
 import type { PavilionCode } from "./types";
-import { supabase } from "./lib/supabase";
 import { submitCheckInByToken } from "./lib/checkin";
 import {
   LoadingScreen,
@@ -123,6 +122,7 @@ export default function App(): React.ReactElement {
     errorMessage,
     loginError,
     verifyError,
+    debugOtpCode,
     isLoading,
     navigate,
     setQrTokenFromScan,
@@ -132,20 +132,6 @@ export default function App(): React.ReactElement {
     handleLogout,
     handleResend,
   } = useApp();
-
-  useEffect(() => {
-    const loadPavilions = async () => {
-      const { data, error } = await supabase
-        .from("pavilions")
-        .select("id, code, name")
-        .order("code");
-
-      console.log("PAVILIONS:", data);
-      console.log("SUPABASE_ERROR:", error);
-    };
-
-    void loadPavilions();
-  }, []);
 
   const handleDebugCheckIn = async () => {
     try {
@@ -182,6 +168,7 @@ export default function App(): React.ReactElement {
           onBack={() => navigate("welcome")}
           isLoading={isLoading}
           error={loginError}
+          debugOtpCode={debugOtpCode}
         />
       )}
 
@@ -193,6 +180,7 @@ export default function App(): React.ReactElement {
           onBack={() => navigate("login")}
           isLoading={isLoading}
           error={verifyError}
+          debugOtpCode={debugOtpCode}
         />
       )}
 
@@ -233,7 +221,7 @@ export default function App(): React.ReactElement {
 
       {showDemo && <DemoBar qrCode={qrCode} onChange={setQrTokenFromScan} />}
 
-      {!import.meta.env.PROD && false && (
+      {!import.meta.env.PROD && import.meta.env.VITE_SHOW_DEBUG_CHECKIN === "true" && (
         <button
           type="button"
           onClick={handleDebugCheckIn}

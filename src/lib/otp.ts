@@ -3,6 +3,7 @@ import { APP_CONFIG } from "../config";
 type OtpRecord = {
   phone: string;
   code: string;
+  sentAt: number;
   expiresAt: number;
 };
 
@@ -17,6 +18,7 @@ export type SendOtpResult = {
   phone: string;
   debugCode?: string;
   expiresInSec?: number;
+  retryAfterSec?: number;
 };
 
 export type VerifyOtpResult = {
@@ -27,6 +29,7 @@ export type VerifyOtpResult = {
 
 const MOCK_OTP_STORAGE_KEY = "promo_mock_otp";
 const MOCK_OTP_TTL_SEC = 5 * 60;
+const OTP_RESEND_LIMIT_SEC = 60;
 
 let memoryOtpRecord: OtpRecord | null = null;
 
@@ -55,6 +58,17 @@ function createMockCode(): string {
   return Math.floor(Math.random() * max)
     .toString()
     .padStart(length, "0");
+}
+
+function isLocalDev(): boolean {
+  if (typeof window === "undefined") return false;
+
+  return (
+    import.meta.env.DEV &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1" ||
+      window.location.hostname === "::1")
+  );
 }
 
 function readMockOtpRecord(): OtpRecord | null {
@@ -107,9 +121,29 @@ const mockOtpProvider: OtpProvider = {
     }
 
     const code = createMockCode();
+    const existingRecord = readMockOtpRecord();
+
+    if (
+      existingRecord?.phone === normalizedPhone &&
+      Date.now() - existingRecord.sentAt < OTP_RESEND_LIMIT_SEC * 1000
+    ) {
+      const retryAfterSec = Math.ceil(
+        (OTP_RESEND_LIMIT_SEC * 1000 - (Date.now() - existingRecord.sentAt)) /
+          1000
+      );
+
+      return {
+        ok: false,
+        message: `Повторно отправить код можно через ${retryAfterSec} сек`,
+        phone: normalizedPhone,
+        retryAfterSec,
+      };
+    }
+
     const record: OtpRecord = {
       phone: normalizedPhone,
       code,
+      sentAt: Date.now(),
       expiresAt: Date.now() + MOCK_OTP_TTL_SEC * 1000,
     };
 
@@ -162,15 +196,39 @@ const mockOtpProvider: OtpProvider = {
   },
 };
 
-const otpProvider: OtpProvider = mockOtpProvider;
+const realOtpProvider: OtpProvider = {
+  async sendOtp(phone: string): Promise<SendOtpResult> {
+    const res = await fetch("/api/auth/send-code", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone }),
+    });
+
+    return res.json() as Promise<SendOtpResult>;
+  },
+
+  async verifyOtp(phone: string, code: string): Promise<VerifyOtpResult> {
+    const res = await fetch("/api/auth/verify-code", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone, code }),
+    });
+
+    return res.json() as Promise<VerifyOtpResult>;
+  },
+};
+
+function getOtpProvider(): OtpProvider {
+  return isLocalDev() ? mockOtpProvider : realOtpProvider;
+}
 
 export async function sendOtp(phone: string): Promise<SendOtpResult> {
-  return otpProvider.sendOtp(phone);
+  return getOtpProvider().sendOtp(phone);
 }
 
 export async function verifyOtp(
   phone: string,
   code: string
 ): Promise<VerifyOtpResult> {
-  return otpProvider.verifyOtp(phone, code);
+  return getOtpProvider().verifyOtp(phone, code);
 }
