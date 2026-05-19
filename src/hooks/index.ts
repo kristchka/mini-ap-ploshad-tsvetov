@@ -22,17 +22,6 @@ const DEMO_QR_TOKENS: Record<PavilionCode, string> = {
 
 const STARTUP_REQUEST_TIMEOUT_MS = 10000;
 
-function isLocalDev(): boolean {
-  if (typeof window === "undefined") return false;
-
-  return (
-    import.meta.env.DEV &&
-    (window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1" ||
-      window.location.hostname === "::1")
-  );
-}
-
 function hasQrTokenInUrl(): boolean {
   if (typeof window === "undefined") return false;
 
@@ -373,7 +362,7 @@ export function useApp() {
 
       setPhone(phone);
 
-      if (isLocalDev() && result.debugCode) {
+      if (result.debugCode) {
         setDebugOtpCode(result.debugCode);
       }
 
@@ -442,7 +431,7 @@ export function useApp() {
 
       if (result.ok) {
         setPhone(result.phone);
-        setDebugOtpCode(isLocalDev() && result.debugCode ? result.debugCode : "");
+        setDebugOtpCode(result.debugCode ?? "");
       }
     } catch {
       // silently fail on resend

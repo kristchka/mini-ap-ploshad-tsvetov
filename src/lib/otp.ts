@@ -30,6 +30,12 @@ export type VerifyOtpResult = {
 const MOCK_OTP_STORAGE_KEY = "promo_mock_otp";
 const MOCK_OTP_TTL_SEC = 5 * 60;
 const OTP_RESEND_LIMIT_SEC = 60;
+const TEST_SMS_PHONE_DISPLAY = "+7 999 000-00-00";
+const TEST_SMS_PHONE_NORMALIZED = "79990000000";
+const TEST_SMS_CODE = "1111";
+const TEST_SMS_MODE_MESSAGE =
+  `SMS-регистрация пока в тестовом режиме. Для входа используйте тестовый номер ${TEST_SMS_PHONE_DISPLAY} и код ${TEST_SMS_CODE}.`;
+const USE_TEMPORARY_TEST_SMS = true;
 
 let memoryOtpRecord: OtpRecord | null = null;
 
@@ -49,6 +55,10 @@ export function normalizePhone(input: string): string {
 
 function isPhoneValid(phone: string): boolean {
   return /^7\d{10}$/.test(phone);
+}
+
+function isTestSmsPhone(phone: string): boolean {
+  return normalizePhone(phone) === TEST_SMS_PHONE_NORMALIZED;
 }
 
 function createMockCode(): string {
@@ -218,7 +228,66 @@ const realOtpProvider: OtpProvider = {
   },
 };
 
+const temporaryTestOtpProvider: OtpProvider = {
+  async sendOtp(phone: string): Promise<SendOtpResult> {
+    const normalizedPhone = normalizePhone(phone);
+
+    if (!isPhoneValid(normalizedPhone)) {
+      return {
+        ok: false,
+        message: "Введите корректный номер телефона",
+        phone: normalizedPhone,
+      };
+    }
+
+    if (!isTestSmsPhone(normalizedPhone)) {
+      return {
+        ok: false,
+        message: TEST_SMS_MODE_MESSAGE,
+        phone: normalizedPhone,
+      };
+    }
+
+    return {
+      ok: true,
+      message: "Тестовый код создан",
+      phone: TEST_SMS_PHONE_NORMALIZED,
+      debugCode: TEST_SMS_CODE,
+      expiresInSec: MOCK_OTP_TTL_SEC,
+    };
+  },
+
+  async verifyOtp(phone: string, code: string): Promise<VerifyOtpResult> {
+    const normalizedPhone = normalizePhone(phone);
+    const normalizedCode = (code || "").replace(/\D/g, "");
+
+    if (!isTestSmsPhone(normalizedPhone)) {
+      return {
+        ok: false,
+        message: TEST_SMS_MODE_MESSAGE,
+      };
+    }
+
+    if (normalizedCode !== TEST_SMS_CODE) {
+      return {
+        ok: false,
+        message: "Неверный код",
+      };
+    }
+
+    return {
+      ok: true,
+      message: "Код подтверждён",
+      phone: TEST_SMS_PHONE_NORMALIZED,
+    };
+  },
+};
+
 function getOtpProvider(): OtpProvider {
+  if (USE_TEMPORARY_TEST_SMS) {
+    return temporaryTestOtpProvider;
+  }
+
   return isLocalDev() ? mockOtpProvider : realOtpProvider;
 }
 
